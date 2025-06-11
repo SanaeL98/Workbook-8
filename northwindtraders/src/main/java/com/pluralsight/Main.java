@@ -5,12 +5,12 @@ package com.pluralsight;
 //import java.sql.ResultSet;
 //import java.sql.SQLException;
 //import java.sql.Statement;
+
 import java.sql.*;
 
 public class Main {
-    public static void main(String[] args) throws SQLException, ClassNotFoundException {
-        // load the MySQL Driver, next line no longer needed in newer versions of Java
-//         Class.forName("com.mysql.cj.jdbc.Driver");
+    public static void main(String[] args) {
+
         if (args.length != 2) {
             System.out.println(
                     "Application needs two arguments to run: " +
@@ -21,33 +21,36 @@ public class Main {
         String username = args[0];
         String password = args[1];
 
+        String sql = """
+                SELECT ProductId,
+                       ProductName,
+                       UnitPrice,
+                       UnitsInStock
+                FROM Products
+                """;
 
-        // 1. open a connection to the database
-        // use the database URL to point to the correct database
-        Connection connection;
-        connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/northwind", username, password);
+        try (
+                Connection connection =DriverManager.getConnection("jdbc:mysql://localhost:3306/northwind",username,password) ;
+                PreparedStatement preparedStatement = connection.prepareStatement(sql);
+                ResultSet results = preparedStatement.executeQuery();
+        ) {
 
-        // create statement
-        // the statement is tied to the open connection
-        Statement statement = connection.createStatement();
 
-        // define your query
-        String query = "SELECT * FROM products";
-        System.out.println(query);
-        // 2. Execute your query
-        ResultSet results = statement.executeQuery(query);
+            System.out.printf("%-5s %-40s %15s %10s%n", "ID", "Product Name", "Price", "Stock");
+            System.out.println("-------------------------------------------------------------------------");
 
-        // process the results
-        while (results.next()) {
-            String productName = results.getString("ProductName");
-//            String productId = results.getNString("ProductID");
-//            System.out.println(productInfo);
-            System.out.println(productName);
+            while (results.next()) {
+                int productId = results.getInt("ProductID");
+                String productName = results.getString("ProductName");
+                double unitPrice = results.getDouble("UnitPrice");
+                int unitsInStock = results.getInt("UnitsInStock");
+                System.out.printf("%-5d %-40s %15.2f %10d%n", productId, productName, unitPrice, unitsInStock);
+            }
+        } catch(SQLException e){
+            System.out.println("There was an error retrieving your information. Please try again or contact support");
+            throw new RuntimeException(e);
         }
-
-        // 3. Close resources
-        results.close();
-        statement.close();
-        connection.close();
     }
 }
+
+
