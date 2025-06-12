@@ -1,56 +1,61 @@
 package com.pluralsight;
 
-//import java.sql.Connection;
-//import java.sql.DriverManager;
-//import java.sql.ResultSet;
-//import java.sql.SQLException;
-//import java.sql.Statement;
+import com.pluralsight.dao.ProductDAO;
+import com.pluralsight.model.Product;
+import org.apache.commons.dbcp2.BasicDataSource;
 
-import java.sql.*;
+import java.util.List;
+import java.util.Scanner;
 
 public class Main {
+
     public static void main(String[] args) {
-
-        if (args.length != 2) {
-            System.out.println(
-                    "Application needs two arguments to run: " +
-                            "java com.pluralsight.UsingDriverManager <username> <password>");
-            System.exit(1);
-        }
-
         String username = args[0];
         String password = args[1];
 
-        String sql = """
-                SELECT ProductId,
-                       ProductName,
-                       UnitPrice,
-                       UnitsInStock
-                FROM Products
-                """;
+        BasicDataSource dataSource = new BasicDataSource();
+        dataSource.setUrl("jdbc:mysql://localhost:3306/northwind");
+        dataSource.setUsername(username);
+        dataSource.setPassword(password);
 
-        try (
-                Connection connection =DriverManager.getConnection("jdbc:mysql://localhost:3306/northwind",username,password) ;
-                PreparedStatement preparedStatement = connection.prepareStatement(sql);
-                ResultSet results = preparedStatement.executeQuery();
-        ) {
+        displayAllProductsScreen(dataSource);
+        displayProductSearchScreen(dataSource);
+    }
 
+    private static void displayAllProductsScreen(BasicDataSource dataSource) {
+        ProductDAO productDAO = new ProductDAO(dataSource);
+        List<Product> products = productDAO.getAllProducts();
 
-            System.out.printf("%-5s %-40s %15s %10s%n", "ID", "Product Name", "Price", "Stock");
-            System.out.println("-------------------------------------------------------------------------");
+        System.out.printf("%-5s %-30s %-10s %-10s%n", "ID", "Name", "Price", "Stock");
+        System.out.println("---------------------------------------------------------------");
 
-            while (results.next()) {
-                int productId = results.getInt("ProductID");
-                String productName = results.getString("ProductName");
-                double unitPrice = results.getDouble("UnitPrice");
-                int unitsInStock = results.getInt("UnitsInStock");
-                System.out.printf("%-5d %-40s %15.2f %10d%n", productId, productName, unitPrice, unitsInStock);
-            }
-        } catch(SQLException e){
-            System.out.println("There was an error retrieving your information. Please try again or contact support");
-            throw new RuntimeException(e);
+        for (Product product : products) {
+            System.out.printf("%-5d %-30s $%-9.2f %-10d%n",
+                    product.getProductId(),
+                    product.getProductName(),
+                    product.getUnitPrice(),
+                    product.getUnitsInStock());
+        }
+    }
+
+    private static void displayProductSearchScreen(BasicDataSource dataSource) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.print("Search for products that start with: ");
+        String searchTerm = scanner.nextLine() + "%";
+
+        ProductDAO productDAO = new ProductDAO(dataSource);
+        List<Product> products = productDAO.searchProducts(searchTerm);
+
+        System.out.println("\nSearch Results:");
+        System.out.printf("%-5s %-30s %-10s %-10s%n", "ID", "Name", "Price", "Stock");
+        System.out.println("---------------------------------------------------------------");
+
+        for (Product product : products) {
+            System.out.printf("%-5d %-30s $%-9.2f %-10d%n",
+                    product.getProductId(),
+                    product.getProductName(),
+                    product.getUnitPrice(),
+                    product.getUnitsInStock());
         }
     }
 }
-
-
